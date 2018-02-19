@@ -1,0 +1,106 @@
+import { parseString } from  'xml2js';
+import _ from 'lodash';
+import { SEARCH_FOR_BOOKS, GET_BOOK_DESC } from '../actions/action_types';
+import { printActionError, printPayloadError, printParseError,
+  getBookDetails } from './reducer_helpers';
+
+const bookResults = {}; // null if failed to get results
+
+export default function bookResultsReducer(state = bookResults, action) {
+  const reducerName = "bookResultsReducer";
+
+  switch (action.type) {
+
+    case SEARCH_FOR_BOOKS:
+      if (action.error) {  // error from goodreads search books
+        printActionError(reducerName, SEARCH_FOR_BOOKS, action);
+        state = null; // mark failure
+      } else if (!action.payload || !action.payload.data) {
+        printPayloadError(reducerName, SEARCH_FOR_BOOKS, action);
+      } else {
+        parseString(action.payload.data, function(err, result) {
+          if (err) {
+            printParseError(reducerName, SEARCH_FOR_BOOKS, err);
+          } else {
+            state = Object.assign({}, getBooks(result));
+          }
+        });
+      }
+      return state;
+
+      case GET_BOOK_DESC:
+
+        if (action.error) {  // error from goodreads show book
+          printActionError(reducerName, GET_BOOK_DESC, action);
+        } else if (!action.payload || !action.payload.data) {
+          printPayloadError(reducerName, GET_BOOK_DESC, action);
+        } else {
+          parseString(action.payload.data, function(err, result) {
+            if (err) {
+              printParseError(reducerName, GET_BOOK_DESC, err);
+            } else {
+              const bookInfo = getBookDetails(result);
+              const id = bookInfo.id;
+              const desc = setLineBreaks(bookInfo.desc);
+
+              if (!(id in state)) {
+                console.error(`In bookResultsReducer/GET_BOOK_DESC. ` +
+                  `Cannot find book id in book results. id = ${id}`);
+              } else {
+                const newBook = Object.assign({}, state[id], { description: desc });
+                state = Object.assign({}, state, { [id]: newBook });
+              }
+            }
+          });
+        }
+        return state;
+
+    default:
+      return state;
+  }
+}
+
+function getBooks(data) {
+
+  const bookResults =  data.GoodreadsResponse.search[0].results[0].work;
+  if (!bookResults || bookResults.length === 0) {
+    return {};
+  } else {
+    const results = bookResults.map( (book) => {
+      const bookInfo = book.best_book[0];
+      return (
+        { id: book.id[0]._,
+          title:
+            bookInfo.title &&
+            bookInfo.title[0] ?
+            bookInfo.title[0] : "No title specified",
+          author:
+            bookInfo.author &&
+            bookInfo.author[0].name &&
+            bookInfo.author[0].name[0] ?
+            bookInfo.author[0].name[0] : "No author specified",
+          image:
+            bookInfo.image_url &&
+            bookInfo.image_url[0] ?
+            bookInfo.image_url[0] : "/assets/no_book_cover.png",
+          year:
+            book.original_publication_year &&
+            book.original_publication_year[0] &&
+            book.original_publication_year[0]._ ? book.original_publication_year[0]._ : "0000",
+          rating:
+            book.average_rating  &&
+            book.average_rating[0] &&
+            book.average_rating[0]._ ?
+            book.average_rating[0]._ : "0.0",
+          description: '' }
+      );
+    });
+    return _.mapKeys(results, 'id');
+  }
+}
+
+function setLineBreaks(str) {
+
+  // replace line breaks, remove bold and italics
+  return str;
+}

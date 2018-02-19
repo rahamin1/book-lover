@@ -1,0 +1,55 @@
+import React from 'react';
+import ReactDOM from 'react-dom';
+import { Provider } from 'react-redux';
+import { BrowserRouter, Route, Switch } from 'react-router-dom';
+import { createStore, applyMiddleware } from 'redux';
+import ReduxPromise from 'redux-promise';
+import 'bootstrap/dist/css/bootstrap.css';
+import './index.css';
+import registerServiceWorker from './registerServiceWorker';
+import Home from './components/home/home';
+import Cats from './components/cats/cats';
+import Books from './components/books/books';
+import BookDetails from './components/bookdetails/bookdetails';
+import Login from './components/login/login';
+import reducers from './reducers';
+
+const createStoreWithMiddleware = applyMiddleware(ReduxPromise)(createStore);
+
+/* ---------- with Debug ---------------*/
+ReactDOM.render(
+  <Provider store={createStoreWithMiddleware(reducers,
+    window.__REDUX_DEVTOOLS_EXTENSION__ &&
+    window.__REDUX_DEVTOOLS_EXTENSION__())}>
+    <BrowserRouter>
+      <div>
+        <Switch>
+          <Route path="/login" component={Login} />
+          <Route path="/cats" component={Cats} />
+          <Route path="/books/:catId" component={Books} />
+          <Route path="/bookdetails/:bookId" component={BookDetails} />
+          <Route path="/" component={Home} />
+        </Switch>
+      </div>
+
+    </BrowserRouter>
+  </Provider>
+  , document.querySelector('#root'));
+
+  /* ---------- without Debug ---------------
+ReactDOM.render(
+  <Provider store={createStoreWithMiddleware(reducers)}>
+    <BrowserRouter>
+      <div>
+        <Switch>
+          <Route path="/posts/new" component={PostsNew} />
+          <Route path="/" component={PostsIndex} />
+        </Switch>
+      </div>
+
+    </BrowserRouter>
+  </Provider>
+  , document.querySelector('.container'));
+*/
+
+registerServiceWorker();
